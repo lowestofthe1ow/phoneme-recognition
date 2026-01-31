@@ -37,7 +37,7 @@ phoneme-extraction
    uses Python 3.13**.
 2. Install dependencies with `uv sync`
 
-> [!INFO]
+> [!NOTE]
 Running Epitran for English G2P requires `flite` and its `lex_lookup`. Follow
 installation instructions [here](https://pypi.org/project/epitran/).
 
