@@ -1,5 +1,5 @@
 uv run src/scripts/nemo/process_asr_text_tokenizer.py \
-    --manifest=data/nexdata/filipino_822/train_manifest.json \
+    --manifest=data/magichub/asr-sfdusc/train_manifest.json \
     --data_root=models/tokenizers/ipa_tokenizer \
     --vocab_size=34 \
     --tokenizer=spe \
