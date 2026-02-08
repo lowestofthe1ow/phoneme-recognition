@@ -14,8 +14,13 @@ phoneme-extraction
 ├── (data)                    Dataset files
 │   ├── magichub
 │   │   └── asr-sfdusc
+│   │       └── WAV
+│   │           ├── G0004
+│   │           └── ...
 │   ├── nexdata
 │   │   └── filipino_822
+│   │       ├── G00001
+│   │       └── G00608
 ├── (models)                  Model checkpoint files (.nemo, .ckpt, etc.)
 │   ├── checkpoints
 │   ├── facebook
