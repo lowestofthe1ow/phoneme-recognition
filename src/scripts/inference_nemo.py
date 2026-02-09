@@ -13,7 +13,7 @@ model = nemo_asr.models.ASRModel.restore_from(args.path)
 
 # Transcribe the converted WAV file
 # The input is a list of file paths
-transcriptions = model.transcribe("data/samples/TAGFND1_0898.wav")
+transcriptions = model.transcribe("data/samples/FLEURS.wav")
 
 # Print the transcription
 print(transcriptions[0].text)
