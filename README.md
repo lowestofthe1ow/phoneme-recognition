@@ -12,7 +12,9 @@ phoneme-extraction
 ├── bash                      Bash scripts for certain tasks
 ├── config                    YAML configuration files
 ├── (data)                    Dataset files
-│   ├── nexdata
+│   ├── magichub
+│   │   └── asr-sfdusc
+│   ├── nexdata
 │   │   └── filipino_822
 ├── (models)                  Model checkpoint files (.nemo, .ckpt, etc.)
 │   ├── checkpoints
@@ -28,6 +30,23 @@ phoneme-extraction
 
 ## How to run
 
+### Creating a `.env` file
+
+Create a `.env` file at the root directory to run the scripts in `bash/`. It
+should contain the following:
+
+```
+CHECKPOINT_PATH="models/checkpoints/Speech_To_Text_Finetuning_2026-01-30_18-24-21.nemo"
+BASE_MODEL_PATH="models/nvidia/stt_en_conformer_ctc_small.nemo"
+TEST_MANIFEST_PATH="data/nexdata/filipino_822/test_manifest.json"
+TRAIN_MANIFEST_PATH="data/nexdata/filipino_822/train_manifest.json"
+VALID_MANIFEST_PATH="data/nexdata/filipino_822/valid_manifest.json"
+```
+
+Modify the file as needed when changing models or datasets.
+
+### Fine-tuning
+
 > [!NOTE]
 > **Last updated**: 27 Jan 2026. Current approach is to fine-tune NVIDIA's
 > `stt_en_conformer_ctc_small` model with a phoneme-based
@@ -42,6 +61,13 @@ Running Epitran for English G2P requires `flite` and its `lex_lookup`. Follow
 installation instructions [here](https://pypi.org/project/epitran/).
 
 3. Set up datasets... (WIP)
+    1. **Nexdata "822" hours dataset**: Download the dataset from 
+       [here](https://huggingface.co/datasets/Nexdata/822-Hours-Tagalog-the-Philippines-Scripted-Monologue-Smartphone-speech-dataset)
+    2. **MagicHub ASR-SFDuSC**: Download the dataset from 
+       [here](https://magichub.com/datasets/filipino-scripted-speech-corpus-daily-use-sentence/)
+    3. Follow the directory structure shown above with the downloaded files.
+    4. Run the `make_manifest.py` scripts in the respective dataset folders in
+       `src/datasets/scripts` for all downloaded datasets
 4. Train the SentencePiece tokenizer with `source bash/train_tokenizer.sh`.
 5. Fine-tune the `stt_en_conformer_ctc_small` model with
    `source bash/finetune_stt_en_conformer.sh`.
@@ -57,11 +83,15 @@ installation instructions [here](https://pypi.org/project/epitran/).
 > data only. The `stt_en_conformer_ctc_small` finetune seems to perform rather
 > well (?) all things considered.
 
+### Evaluation
+
+Run `source bash/evaluate_phoneme_extraction.sh`
+
 ## Experimental results
 
 Some interesting results from initial experiments...
 
-### `stt_en_conformer_ctc_small`
+### `stt_en_conformer_ctc_small` trained on Nexdata corpus
 
 Training configurations are as in the YAML config and batch scripts. We trained
 for 100 epochs.
