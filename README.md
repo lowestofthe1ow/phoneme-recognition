@@ -14,13 +14,8 @@ phoneme-extraction
 ├── (data)                    Dataset files
 │   ├── magichub
 │   │   └── asr-sfdusc
-│   │       └── WAV
-│   │           ├── G0004
-│   │           └── ...
 │   ├── nexdata
 │   │   └── filipino_822
-│   │       ├── G00001
-│   │       └── G00608
 ├── (models)                  Model checkpoint files (.nemo, .ckpt, etc.)
 │   ├── checkpoints
 │   ├── facebook
@@ -42,7 +37,7 @@ should contain the following:
 
 ```
 CHECKPOINT_PATH="models/checkpoints/Speech_To_Text_Finetuning_2026-01-30_18-24-21.nemo"
-BASE_MODEL_PATH="models/nvidia/parakeet-tdt-0.6b-v3.nemo"
+BASE_MODEL_PATH="models/nvidia/stt_en_conformer_ctc_small.nemo"
 TEST_MANIFEST_PATH="data/nexdata/filipino_822/test_manifest.json"
 TRAIN_MANIFEST_PATH="data/nexdata/filipino_822/train_manifest.json"
 VALID_MANIFEST_PATH="data/nexdata/filipino_822/valid_manifest.json"
