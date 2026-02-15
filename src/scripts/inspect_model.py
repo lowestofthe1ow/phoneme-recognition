@@ -1,6 +1,6 @@
 import argparse
-import nemo.collections.asr as nemo_asr
 
+import nemo.collections.asr as nemo_asr
 from torchinfo import summary
 
 parser = argparse.ArgumentParser(

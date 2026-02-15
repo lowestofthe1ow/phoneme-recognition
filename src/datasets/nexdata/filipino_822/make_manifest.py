@@ -15,14 +15,14 @@ data/
 """
 
 import os
-import pandas as pd
-import epitran
-
 from pathlib import Path
-from sklearn.model_selection import train_test_split
-from epitran.backoff import Backoff
 
-from src.utils.file_read import read_file, get_wav_duration
+import epitran
+import pandas as pd
+from epitran.backoff import Backoff
+from sklearn.model_selection import train_test_split
+
+from src.utils.file_read import get_wav_duration, read_file
 
 RANDOM_STATE = 339
 
