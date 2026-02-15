@@ -35,14 +35,10 @@ def make_manifest(_directory):
     epi = Backoff(["tgl-Latn", "eng-Latn"])
 
     wav_files = [
-        directory / file
-        for file in os.listdir(directory)
-        if file.endswith(".wav")
+        directory / file for file in os.listdir(directory) if file.endswith(".wav")
     ]
 
-    txt_files = [
-        file for file in os.listdir(directory) if file.endswith(".txt")
-    ]
+    txt_files = [file for file in os.listdir(directory) if file.endswith(".txt")]
 
     # Create the needed data for the manifest file
     data = pd.DataFrame(
@@ -52,9 +48,7 @@ def make_manifest(_directory):
                 epi.transliterate(read_file(directory / filename).strip())
                 for filename in sorted(txt_files)
             ],
-            "duration": [
-                get_wav_duration(filename) for filename in sorted(wav_files)
-            ],
+            "duration": [get_wav_duration(filename) for filename in sorted(wav_files)],
         }
     )
 
