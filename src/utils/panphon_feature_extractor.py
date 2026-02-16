@@ -1,39 +1,43 @@
 import panphon
 import torch
-import torch.nn as nn
 
 
 class PanPhonFeatureExtractor:
     ft = panphon.FeatureTable()
-    bce = nn.CrossEntropyLoss()
 
-    def extract_features(self, sentence):
-        words = sentence.split()
-        word_features = {}
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
 
-        for word in words:
-            word_features[word] = self.ft.word_array([], word)
+        # Get feature matrix over the entire tokenzier vocabulary
+        self.vocab_matrix = self.feature_matrix_from_list(tokenizer.vocab)
+        print(f"Tokenizer vocabulary: {tokenizer.vocab}")
+        print(f"Matrix shape: {self.vocab_matrix.shape}")
+        print(self.vocab_matrix)
 
-        for word, array in word_features.items():
-            print(f"Word: {word}")
-            print(f"Shape (Segments, Features): {array.shape}")
-            # print(array)
-            print("-" * 80)
+        # TODO: Can map {-1, 0, 1} to {0, 0.5, 1}?
 
-        # TODO: Forced alignment
+    def feature_vector_from_char(self, char):
+        """
+        Returns, e.g., [[1, 1, -1, ... 0, 0]] containing all 24 features
+        If token is blank/has no articulatory features, returns []
+        """
+        char_features = self.ft.word_array([], char)
+        return char_features.tolist()
 
-        return word_features
+    def feature_matrix_from_list(self, list):
+        feature_matrix = torch.full((36, 24), 0, dtype=torch.float32)
 
-    def bce_loss(self, predicted, actual):
-        predicted_features = self.extract_features(predicted)
-        actual_features = self.extract_features(actual)
-        loss = self.bce(predicted_features, actual_features)
+        for index, token in enumerate(list):
+            features = self.feature_vector_from_char(token)
 
-        return loss
+            # Ignore unknown token and those without articulatory features
+            if token == "<unk>" or len(features) == 0:
+                print("No features")
+            else:
+                feature_matrix[index] = torch.tensor(features[0])
 
+        return feature_matrix
 
-ppfe = PanPhonFeatureExtractor()
-loss = ppfe.bce_loss(
-    "ʔaŋ talumpati aj isaŋ uɾi ŋ kompetiʃon ŋ mɡa paɡbasa.",
-    "ʔaŋ talumpataj isaŋ uɾi ŋ kompitʃon ŋ mɡa paɡbasa.",
-)
+    def get_vocab_matrix(self):
+        """Returns the feature matrix over the entire tokenizer vocab"""
+        return self.vocab_matrix

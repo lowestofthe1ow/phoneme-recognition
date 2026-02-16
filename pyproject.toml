@@ -12,6 +12,7 @@ dependencies = [
     "lab>=8.8",
     "nemo-toolkit[asr]>=2.6.1",
     "panphon>=0.22.2",
+    "pysdtw>=0.0.5",
     "torch>=2.9.1",
     "torchinfo>=1.8.0",
 ]

@@ -1,6 +1,6 @@
 source .env
 
-uv run src/scripts/nemo/speech_to_text_finetune.py \
+uv run python3 -m src.scripts.augmented_ctc_finetune \
     --config-path="$(pwd)/config" \
     --config-name="speech_to_text_finetune" \
     model.train_ds.manifest_filepath="$TRAIN_MANIFEST_PATH" \

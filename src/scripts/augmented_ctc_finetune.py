@@ -74,6 +74,8 @@ from nemo.utils.exp_manager import exp_manager
 from nemo.utils.get_rank import is_global_rank_zero
 from nemo.utils.trainer_utils import resolve_trainer_cfg
 
+from src.utils.augmented_ctc_loss import AugmentedCTCLoss
+
 
 def get_base_model(trainer, cfg):
     """
@@ -246,6 +248,8 @@ def main(cfg):
     # Setup SpecAug
     if hasattr(cfg.model, "spec_augment") and cfg.model.spec_augment is not None:
         asr_model.spec_augment = ASRModel.from_config_dict(cfg.model.spec_augment)
+
+    asr_model.loss = AugmentedCTCLoss(asr_model.loss, asr_model.tokenizer)
 
     trainer.fit(asr_model)
 

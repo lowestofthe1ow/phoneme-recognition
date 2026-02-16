@@ -255,6 +255,7 @@ dependencies = [
     { name = "lab" },
     { name = "nemo-toolkit", extra = ["asr"] },
     { name = "panphon" },
+    { name = "pysdtw" },
     { name = "torch" },
     { name = "torchinfo" },
 ]
@@ -268,6 +269,7 @@ requires-dist = [
     { name = "lab", specifier = ">=8.8" },
     { name = "nemo-toolkit", extras = ["asr"], specifier = ">=2.6.1" },
     { name = "panphon", specifier = ">=0.22.2" },
+    { name = "pysdtw", specifier = ">=0.0.5" },
     { name = "torch", specifier = ">=2.9.1" },
     { name = "torchinfo", specifier = ">=1.8.0" },
 ]
@@ -3466,6 +3468,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f3/91/9c6ee907786a473bf81c5f53cf703ba0957b23ab84c264080fb5a450416f/pyparsing-3.3.2.tar.gz", hash = "sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc", size = 6851574, upload-time = "2026-01-21T03:57:59.36Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl", hash = "sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d", size = 122781, upload-time = "2026-01-21T03:57:55.912Z" },
+]
+
+[[package]]
+name = "pysdtw"
+version = "0.0.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numba" },
+    { name = "torch" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/7c/e201ffa0144916bd2c26a7e5a2d2aeb6f1ecadd89502bdded9d6deb830c1/pysdtw-0.0.5.tar.gz", hash = "sha256:a1e9a25c250f0da3a886dc7d779e9f3ab8b8cbbdba607427a9fef146b25ae4e8", size = 6075, upload-time = "2022-08-10T15:36:02.958Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ac/00/62c234127146cc4695fe2e28fb827c59b4f2d417deb09b9a0c21eb99781f/pysdtw-0.0.5-py3-none-any.whl", hash = "sha256:1a46d46fb00408a300a2dbe006ea957d3efef20502cc98d24c5b22e3ee867653", size = 7070, upload-time = "2022-08-10T15:36:01.453Z" },
 ]
 
 [[package]]
