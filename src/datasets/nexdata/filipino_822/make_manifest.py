@@ -52,6 +52,20 @@ def make_manifest(_directory):
         }
     )
 
+    data["text"] = (
+        data["text"]
+        # IPA does not use standard punctuation
+        .str.replace(",", "")
+        .str.replace("'", "")
+        .str.replace(".", "")
+        # Hyphenated words in Tagalog are often read with a glottal stop
+        # NOTE: Only replace if not already followed by the glottal stop mark
+        .str.replace(r"-(?!ʔ)", "ʔ", regex=True)
+        .str.replace("-", "", regex=False)
+    )
+
+    print(data)
+
     return data
 
 
