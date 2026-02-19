@@ -1,6 +1,11 @@
-# Phoneme extraction research project
+<div align="center">
 
-Main Git repository for phoneme extraction undergraduate research project.
+<h1>Phoneme recognition of Filipino speech with deep learning methods</h1>
+
+</div>
+
+This serves as the main Git repository for a phoneme recognition undergraduate
+research project.
 
 ## Project structure
 
@@ -8,7 +13,7 @@ The repository is structured as follows. Directories in parentheses are ignored
 by the .gitignore file, so make them yourself.
 
 ```
-phoneme-extraction
+phoneme-recognition
 ├── bash                      Bash scripts for certain tasks
 ├── config                    YAML configuration files
 ├── (data)                    Dataset files
@@ -80,7 +85,7 @@ Modify the file as needed when changing models or datasets.
 
 ### Evaluation
 
-Run `source bash/evaluate_phoneme_extraction.sh`
+Run `source bash/evaluate_phoneme_recognition.sh`
 
 ## Experimental results
 
