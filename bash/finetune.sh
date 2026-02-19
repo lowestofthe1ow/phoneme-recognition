@@ -6,7 +6,7 @@ uv run src/scripts/nemo/speech_to_text_finetune.py \
     model.train_ds.manifest_filepath="$TRAIN_MANIFEST_PATH" \
     model.validation_ds.manifest_filepath="$VALID_MANIFEST_PATH" \
     model.tokenizer.update_tokenizer=True \
-    model.tokenizer.dir=models/tokenizers/ipa_tokenizer/tokenizer_spe_char_v34 \
+    model.tokenizer.dir="$TOKENIZER_PATH" \
     model.tokenizer.type=bpe \
     trainer.devices=-1 \
     trainer.accelerator='gpu' \

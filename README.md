@@ -80,6 +80,7 @@ BASE_MODEL_PATH="models/nvidia/stt_en_conformer_ctc_small.nemo"
 TEST_MANIFEST_PATH="data/nexdata/filipino_822/test_manifest.json"
 TRAIN_MANIFEST_PATH="data/nexdata/filipino_822/train_manifest.json"
 VALID_MANIFEST_PATH="data/nexdata/filipino_822/valid_manifest.json"
+TOKENIZER_PATH="models/tokenizers/ipa_tokenizer/tokenizer_spe_char_v34"
 ```
 
 Modify the file as needed when changing models or datasets.
