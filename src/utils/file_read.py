@@ -3,8 +3,8 @@ This module contains utility functions for reading input data files, like the
 .wav and .txt files in datasets.
 """
 
-import wave
 import contextlib
+import wave
 
 
 def get_wav_duration(path):
