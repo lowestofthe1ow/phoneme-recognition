@@ -64,6 +64,16 @@ VALID_MANIFEST_PATH="data/nexdata/filipino_822/valid_manifest.json"
 
 Modify the file as needed when changing models or datasets.
 
+### Download datasets
+
+1. **Nexdata "822" hours dataset**: Download the dataset from
+   [here](https://huggingface.co/datasets/Nexdata/822-Hours-Tagalog-the-Philippines-Scripted-Monologue-Smartphone-speech-dataset)
+2. **MagicHub ASR-SFDuSC**: Download the dataset from
+   [here](https://magichub.com/datasets/filipino-scripted-speech-corpus-daily-use-sentence/)
+3. Follow the directory structure shown above with the downloaded files.
+4. Run the `make_manifest.py` scripts in the respective dataset folders in
+   `src/datasets/scripts` for all downloaded datasets
+
 ## Model training
 
 ### Fine-tuning
@@ -73,19 +83,9 @@ Modify the file as needed when changing models or datasets.
 > `stt_en_conformer_ctc_small` model with a phoneme-based
 > [SentencePiece](https://github.com/google/sentencepiece) tokenizer.
 
-1. Clone the repository and setup a virtual environment with `uv`. **Currently
-   uses Python 3.13**.
-2. Install dependencies with `uv sync`
-3. Set up datasets... (WIP)
-    1. **Nexdata "822" hours dataset**: Download the dataset from
-       [here](https://huggingface.co/datasets/Nexdata/822-Hours-Tagalog-the-Philippines-Scripted-Monologue-Smartphone-speech-dataset)
-    2. **MagicHub ASR-SFDuSC**: Download the dataset from
-       [here](https://magichub.com/datasets/filipino-scripted-speech-corpus-daily-use-sentence/)
-    3. Follow the directory structure shown above with the downloaded files.
-    4. Run the `make_manifest.py` scripts in the respective dataset folders in
-       `src/datasets/scripts` for all downloaded datasets
-4. Train the SentencePiece tokenizer with `source bash/train_tokenizer.sh`.
-5. Fine-tune the `stt_en_conformer_ctc_small` model with
+1. Set up datasets... (WIP)
+    4. Train the SentencePiece tokenizer with `source bash/train_tokenizer.sh`.
+2. Fine-tune the `stt_en_conformer_ctc_small` model with
    `source bash/finetune_stt_en_conformer.sh`.
 
 > [!NOTE]
