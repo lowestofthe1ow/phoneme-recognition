@@ -33,7 +33,21 @@ phoneme-recognition
     └── utils                 Miscellaneous utility scripts
 ```
 
-## How to run
+## Setting up
+
+### Installing dependencies
+
+This project uses [`uv`](https://docs.astral.sh/uv/) to manage packages.
+
+1. Create a Python 3.13 virtual environment with `uv venv --python 3.13`.
+2. Run `uv sync` to install dependencies.
+
+### Set up `pre-commit`
+
+1. `pre-commit` should have been installed as a development dependency. Check
+   with `pre-commit --version`.
+2. Install the hook scripts with `pre-commit install`.
+3. Run `pre-commit run --all-files` to run the pre-commit hooks on all files.
 
 ### Creating a `.env` file
 
@@ -50,6 +64,8 @@ VALID_MANIFEST_PATH="data/nexdata/filipino_822/valid_manifest.json"
 
 Modify the file as needed when changing models or datasets.
 
+## Model training
+
 ### Fine-tuning
 
 > [!NOTE]
@@ -61,9 +77,9 @@ Modify the file as needed when changing models or datasets.
    uses Python 3.13**.
 2. Install dependencies with `uv sync`
 3. Set up datasets... (WIP)
-    1. **Nexdata "822" hours dataset**: Download the dataset from 
+    1. **Nexdata "822" hours dataset**: Download the dataset from
        [here](https://huggingface.co/datasets/Nexdata/822-Hours-Tagalog-the-Philippines-Scripted-Monologue-Smartphone-speech-dataset)
-    2. **MagicHub ASR-SFDuSC**: Download the dataset from 
+    2. **MagicHub ASR-SFDuSC**: Download the dataset from
        [here](https://magichub.com/datasets/filipino-scripted-speech-corpus-daily-use-sentence/)
     3. Follow the directory structure shown above with the downloaded files.
     4. Run the `make_manifest.py` scripts in the respective dataset folders in
