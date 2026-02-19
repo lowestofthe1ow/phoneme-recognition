@@ -3,4 +3,4 @@
 #
 # NOTE: The isort package is not a requirement, so install it first
 
-isort --skip src/scripts/nemo --skip .venv . --profile black 
+isort --skip src/scripts/nemo --skip .venv . --profile black
