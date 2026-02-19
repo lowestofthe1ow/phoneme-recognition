@@ -69,8 +69,6 @@ from typing import Optional
 
 import torch
 import transcribe_speech
-from omegaconf import MISSING, OmegaConf, open_dict
-
 from nemo.collections.asr.metrics.wer import word_error_rate
 from nemo.collections.asr.parts.utils.transcribe_utils import (
     PunctuationCapitalization,
@@ -80,6 +78,7 @@ from nemo.collections.asr.parts.utils.transcribe_utils import (
 from nemo.collections.common.metrics.punct_er import DatasetPunctuationErrorRate
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
+from omegaconf import MISSING, OmegaConf, open_dict
 
 
 @dataclass
@@ -123,7 +122,9 @@ def main(cfg: EvaluationConfig):
         )
 
     if not os.path.exists(cfg.dataset_manifest):
-        raise FileNotFoundError(f"The dataset manifest file could not be found at path : {cfg.dataset_manifest}")
+        raise FileNotFoundError(
+            f"The dataset manifest file could not be found at path : {cfg.dataset_manifest}"
+        )
 
     if not cfg.only_score_manifest:
         # Transcribe speech into an output directory
@@ -142,7 +143,7 @@ def main(cfg: EvaluationConfig):
     ground_truth_text = []
     predicted_text = []
     invalid_manifest = False
-    with open(transcription_cfg.output_filename, 'r') as f:
+    with open(transcription_cfg.output_filename, "r") as f:
         for line in f:
             data = json.loads(line)
 
@@ -196,21 +197,29 @@ def main(cfg: EvaluationConfig):
         )
 
     # Compute the WER
-    cer = word_error_rate(hypotheses=predicted_text, references=ground_truth_text, use_cer=True)
-    wer = word_error_rate(hypotheses=predicted_text, references=ground_truth_text, use_cer=False)
+    cer = word_error_rate(
+        hypotheses=predicted_text, references=ground_truth_text, use_cer=True
+    )
+    wer = word_error_rate(
+        hypotheses=predicted_text, references=ground_truth_text, use_cer=False
+    )
 
     if cfg.use_cer:
-        metric_name = 'CER'
+        metric_name = "CER"
         metric_value = cer
     else:
-        metric_name = 'WER'
+        metric_name = "WER"
         metric_value = wer
 
     if cfg.tolerance is not None:
         if metric_value > cfg.tolerance:
-            raise ValueError(f"Got {metric_name} of {metric_value}, which was higher than tolerance={cfg.tolerance}")
+            raise ValueError(
+                f"Got {metric_name} of {metric_value}, which was higher than tolerance={cfg.tolerance}"
+            )
 
-        logging.info(f'Got {metric_name} of {metric_value}. Tolerance was {cfg.tolerance}')
+        logging.info(
+            f"Got {metric_name} of {metric_value}. Tolerance was {cfg.tolerance}"
+        )
 
     logging.info(f"Dataset WER/CER {wer:.2%}/{cer:.2%}")
 
@@ -226,5 +235,5 @@ def main(cfg: EvaluationConfig):
     return cfg
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()  # noqa pylint: disable=no-value-for-parameter
