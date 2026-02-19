@@ -1,5 +1,4 @@
 import epitran
-
 from lingua import Language, LanguageDetectorBuilder
 
 
@@ -11,9 +10,7 @@ class G2P:
 
         # Set up Lingua
         languages = [Language.ENGLISH, Language.TAGALOG]
-        self.detector = LanguageDetectorBuilder.from_languages(
-            *languages
-        ).build()
+        self.detector = LanguageDetectorBuilder.from_languages(*languages).build()
 
     def transliterate(self, sentence):
         out = []

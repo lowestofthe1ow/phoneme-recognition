@@ -15,15 +15,13 @@ data/
 """
 
 import os
-import pandas as pd
-
 from pathlib import Path
-from sklearn.model_selection import train_test_split
 
-from src.utils.file_read import read_file, get_wav_duration
-from src.utils.g2p import G2P
+import pandas as pd
+from epitran.backoff import Backoff
 
-RANDOM_STATE = 339
+from src.utils.file_read import get_wav_duration, read_file
+from src.utils.train_test_val_split import train_test_val_split
 
 
 def make_manifest(_directory):
@@ -33,14 +31,10 @@ def make_manifest(_directory):
     g2p = G2P()
 
     wav_files = [
-        directory / file
-        for file in os.listdir(directory)
-        if file.endswith(".wav")
+        directory / file for file in os.listdir(directory) if file.endswith(".wav")
     ]
 
-    txt_files = [
-        file for file in os.listdir(directory) if file.endswith(".txt")
-    ]
+    txt_files = [file for file in os.listdir(directory) if file.endswith(".txt")]
 
     # Create the needed data for the manifest file
     data = pd.DataFrame(
@@ -50,11 +44,23 @@ def make_manifest(_directory):
                 g2p.transliterate(read_file(directory / filename).strip())
                 for filename in sorted(txt_files)
             ],
-            "duration": [
-                get_wav_duration(filename) for filename in sorted(wav_files)
-            ],
+            "duration": [get_wav_duration(filename) for filename in sorted(wav_files)],
         }
     )
+
+    data["text"] = (
+        data["text"]
+        # IPA does not use standard punctuation
+        .str.replace(",", "")
+        .str.replace("'", "")
+        .str.replace(".", "")
+        # Hyphenated words in Tagalog are often read with a glottal stop
+        # NOTE: Only replace if not already followed by the glottal stop mark
+        .str.replace(r"-(?!ʔ)", "ʔ", regex=True)
+        .str.replace("-", "", regex=False)
+    )
+
+    print(data)
 
     return data
 
@@ -66,40 +72,4 @@ data = pd.concat(
     ]
 )
 
-# Initial split: "train"/test (90% vs 10%)
-all_train_df, test_df = train_test_split(
-    data, test_size=0.1, random_state=RANDOM_STATE, shuffle=True
-)
-
-print(f"Total train data duration: {all_train_df['duration'].sum()}")
-
-# Second split: train/valid (80% / 10% (of the whole dataset))
-train_df, val_df = train_test_split(
-    all_train_df, test_size=0.1 / 0.9, random_state=RANDOM_STATE, shuffle=True
-)
-
-print(f"Original data shape: {data.shape}")
-print(f"Train split shape: {train_df.shape}")
-print(f"Validation split shape: {val_df.shape}")
-print(f"Test split shape: {test_df.shape}")
-
-train_df.to_json(
-    "data/nexdata/filipino_822/train_manifest.json",
-    orient="records",
-    lines=True,
-    default_handler=str,
-)
-
-val_df.to_json(
-    "data/nexdata/filipino_822/valid_manifest.json",
-    orient="records",
-    lines=True,
-    default_handler=str,
-)
-
-test_df.to_json(
-    "data/nexdata/filipino_822/test_manifest.json",
-    orient="records",
-    lines=True,
-    default_handler=str,
-)
+train_test_val_split(data, "data/nexdata/filipino_822/")
