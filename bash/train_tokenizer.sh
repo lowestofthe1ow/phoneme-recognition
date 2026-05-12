@@ -8,7 +8,7 @@ source .env
 uv run src/scripts/nemo/process_asr_text_tokenizer.py \
     --manifest="$TRAIN_MANIFEST_PATH" \
     --data_root="models/tokenizers/ipa_tokenizer" \
-    --vocab_size=34 \
+    --vocab_size=32 \
     --tokenizer=spe \
     --spe_type=char \
     --spe_character_coverage=1.0 \

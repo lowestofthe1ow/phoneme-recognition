@@ -37,12 +37,22 @@ from nemo.collections.asr.parts.utils.eval_utils import cal_write_wer
 from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
 from nemo.collections.asr.parts.utils.transcribe_utils import (
     compute_output_filename,
-    get_inference_dtype,
     prepare_audio_data,
     restore_transcription_order,
     setup_model,
     write_transcription,
 )
+
+
+# Manual definition for compatibility with v2.3.0
+def get_inference_dtype(model_dtype):
+    if model_dtype == "fp16":
+        return torch.float16
+    elif model_dtype == "bf16":
+        return torch.bfloat16
+    return torch.float32
+
+
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
 from nemo.utils.timers import SimpleTimer
