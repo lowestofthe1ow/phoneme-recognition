@@ -13,6 +13,8 @@ dependencies = [
     "nemo-toolkit[asr]>=2.3.0",
     "scikit-learn>=1.8.0",
     "torch>=2.4.0",
+    "torchaudio>=2.11.0",
+    "torchcodec>=0.11.1",
     "torchinfo>=1.8.0",
     "transformers[torch]>=5.2.0",
 ]
