@@ -14,9 +14,11 @@ from src.datasets.pr_dataset import PhonemeDataCollator, dataset_from_manifests
 from src.engines.kotone import build_model
 from src.utils.preview_callback import PreviewCallback
 
+# Requires manifest files following NeMo's format
 TRAIN_MANIFEST = "data/nexdata/filipino_822/train_manifest.json"
 VALID_MANIFEST = "data/nexdata/filipino_822/valid_manifest.json"
 TEST_MANIFEST = "data/nexdata/filipino_822/test_manifest.json"
+
 DEFAULT_MODEL_ID = "charsiu/g2p_multilingual_byT5_small_100"
 MAX_AUDIO_LEN = 160000
 

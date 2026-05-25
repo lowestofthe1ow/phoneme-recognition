@@ -20,7 +20,8 @@ class AudioProjection(nn.Module):
             nn.GELU(),
         )
         self.proj = nn.Linear(WAV2VEC_HIDDEN, BYT5_HIDDEN)
+        self.norm = nn.LayerNorm(BYT5_HIDDEN)
 
     def forward(self, x):
         x = self.conv(x.transpose(1, 2)).transpose(1, 2)
-        return self.proj(x)
+        return self.norm(self.proj(x))
