@@ -107,7 +107,8 @@ Modify the file as needed when changing models or datasets.
 1. Set up datasets... (WIP)
     4. Train the SentencePiece tokenizer with `source bash/train_tokenizer.sh`.
 2. Fine-tune the `stt_en_conformer_ctc_small` model with
-   `source bash/finetune_stt_en_conformer.sh`.
+   `source bash/finetune_stt_en_conformer.sh` (or with `source bash/parquet_finetune.sh`
+   if using FSC data).
 
 > [!NOTE]
 > **Regarding `parakeet-tdt-0.6b-v3`**: Currently investigating how to handle
@@ -122,7 +123,8 @@ Modify the file as needed when changing models or datasets.
 
 ### Evaluation
 
-Run `source bash/evaluate_phoneme_recognition.sh`
+Run `source bash/evaluate_phoneme_recognition.sh` (or `source bash/parquet_evaluate.sh`
+if using FSC).
 
 ## Experimental results
 
