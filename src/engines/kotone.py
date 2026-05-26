@@ -7,7 +7,7 @@ from transformers import (
     Wav2Vec2Model,
 )
 
-from src.engines.fusion import AudioProjection
+from src.engines.fusion import BYT5_HIDDEN, CONV_DOWNSAMPLE_FACTOR, AudioProjection
 
 WAV2VEC_HF = "Khalsuu/filipino-wav2vec2-l-xls-r-300m-official"
 G2P_CHECKPOINT = "models/g2p/checkpoint-9670"
@@ -61,6 +61,12 @@ torch.cuda.empty_cache()
 """
 
 
+def get_output_lengths(input_lengths, wav2vec_stride, conv_downsample_factor):
+    # Account for wav2vec2's internal downsampling, then AudioProjection's conv
+    encoder_lengths = input_lengths // wav2vec_stride
+    return (encoder_lengths - 1) // conv_downsample_factor + 1
+
+
 class KoToNe(PreTrainedModel):
     def __init__(self, config, encoder, decoder, lm_head, tokenizer):
         super().__init__(config)
@@ -69,8 +75,15 @@ class KoToNe(PreTrainedModel):
         self.decoder = decoder
         self.lm_head = lm_head
         self.tokenizer = tokenizer
+        self.ctc_head = nn.Linear(BYT5_HIDDEN, 384)
+        self.ctc_loss = nn.CTCLoss(blank=0, reduction="mean", zero_infinity=True)
 
-    def forward(self, audio_values, decoder_input_ids, labels=None):
+        # Query wav2vec2's total convolutional stride from the model itself
+        self.wav2vec_stride = torch.prod(
+            torch.tensor(self.encoder.config.conv_stride)
+        ).item()
+
+    def forward(self, audio_values, decoder_input_ids, labels=None, audio_lengths=None):
         attention_mask = (audio_values != 0).long()
 
         encoder_out = self.encoder(
@@ -79,6 +92,26 @@ class KoToNe(PreTrainedModel):
         ).last_hidden_state
 
         projected = self.audio_proj(encoder_out)
+
+        # TODO: Go over this block again
+        # CTC head
+        ctc_logits = self.ctc_head(projected)  # (B, T', 1472) -> (B, T', 384)
+        log_probs = ctc_logits.log_softmax(-1)  # (B, T', 384)
+        log_probs = log_probs.transpose(0, 1)  # (T', B, 384)
+
+        # Calculate the input size after downsampling
+        if audio_lengths is not None:
+            input_lengths = get_output_lengths(
+                audio_lengths, self.wav2vec_stride, CONV_DOWNSAMPLE_FACTOR
+            )
+        else:
+            # Fallback: assume no padding
+            input_lengths = torch.full(
+                (projected.size(0),),
+                projected.size(1),
+                dtype=torch.long,
+                device=projected.device,
+            )
 
         decoder_out = self.decoder(
             input_ids=decoder_input_ids,
@@ -89,11 +122,22 @@ class KoToNe(PreTrainedModel):
 
         if labels is not None:
             # Standard cross-entropy at the decoder output
-            loss = nn.functional.cross_entropy(
+            ce_loss = nn.functional.cross_entropy(
                 logits.view(-1, logits.size(-1)),
                 labels.view(-1),
                 ignore_index=-100,
             )
+
+            target_lengths = (labels != -100).sum(
+                dim=1
+            )  # (B,) — non-padded label lengths
+            targets = labels[labels != -100]  # flattened, padding removed
+
+            ctc_loss = self.ctc_loss(log_probs, targets, input_lengths, target_lengths)
+
+            # Combined loss
+            loss = 0.8 * ce_loss + 0.2 * ctc_loss
+
             return loss, logits
 
         return logits
