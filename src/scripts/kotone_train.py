@@ -26,6 +26,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--model-id", default=DEFAULT_MODEL_ID)
 parser.add_argument("--train-manifest-path", default=TRAIN_MANIFEST)
 parser.add_argument("--valid-manifest-path", default=VALID_MANIFEST)
+parser.add_argument("--test-manifest-path", default=TEST_MANIFEST)
 args = parser.parse_args()
 
 tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_ID)
@@ -33,7 +34,10 @@ tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_ID)
 
 model = build_model(tokenizer)
 dataset = dataset_from_manifests(
-    TRAIN_MANIFEST, VALID_MANIFEST, TEST_MANIFEST, tokenizer
+    args.train_manifest_path,
+    args.valid_manifest_path,
+    args.test_manifest_path,
+    tokenizer,
 )
 data_collator = PhonemeDataCollator(tokenizer)
 
@@ -45,8 +49,8 @@ training_args = Seq2SeqTrainingArguments(
     # fp16=True,
     optim="adafactor",
     # --------------------------------------------
-    per_device_train_batch_size=4,
-    gradient_accumulation_steps=4,
+    per_device_train_batch_size=2,
+    gradient_accumulation_steps=8,
     # --------------------------------------------
     # TODO: Look into NAS?
     learning_rate=3e-4,

@@ -1,5 +1,7 @@
+import io
 import json
 
+import pandas as pd
 import torch
 import torchaudio
 from torch.utils.data import Dataset
@@ -8,15 +10,31 @@ from transformers import AutoTokenizer
 from datasets import DatasetDict
 
 RANDOM_STATE = 765
-# MAX_AUDIO_LEN = 160000  # 10s at 16kHz
-TARGET_SR = 16000  # TODO: Look into sampling rates
+TARGET_SR = 16000
+
+_parquet_cache: dict[str, pd.DataFrame] = {}
+
+
+def _load_fsc(path: str) -> tuple[torch.Tensor, int]:
+    parquet_file, sample_key = path.removeprefix("fsc://").rsplit("/", 1)
+    if parquet_file not in _parquet_cache:
+        _parquet_cache[parquet_file] = pd.read_parquet(
+            "data/filipinospeechcorpus/data/" + parquet_file
+        )
+    idx = int(sample_key.removeprefix("sample_").removesuffix(".wav"))
+    audio_bytes = _parquet_cache[parquet_file].loc[idx, "audio"]["bytes"]
+    return torchaudio.load(io.BytesIO(audio_bytes))
 
 
 class PhonemeDataset(Dataset):
     def __init__(self, manifest_path, tokenizer):
         with open(manifest_path) as f:
             self.samples = [json.loads(line) for line in f]
-
+        self.samples = [
+            s
+            for s in self.samples
+            if 0.4 <= s["duration"] <= 10.0 and len(s["text"].split()) <= 10
+        ]
         self.tokenizer = tokenizer
 
     def __len__(self):
@@ -24,14 +42,13 @@ class PhonemeDataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.samples[idx]
-        waveform, sr = torchaudio.load(sample["audio_filepath"])
-
-        # Resample to keep sampling rate consistent
+        path = sample["audio_filepath"]
+        load_fn = _load_fsc if path.startswith("fsc://") else torchaudio.load
+        waveform, sr = load_fn(path)
         if sr != TARGET_SR:
             waveform = torchaudio.functional.resample(waveform, sr, TARGET_SR)
-
         return {
-            "audio_values": waveform.mean(0),  # [:MAX_AUDIO_LEN],
+            "audio_values": waveform.mean(0),
             "labels": self.tokenizer(
                 sample["text"], return_tensors="pt"
             ).input_ids.squeeze(0),
