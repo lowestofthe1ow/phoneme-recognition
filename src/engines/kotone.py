@@ -129,8 +129,25 @@ class KoToNe(PreTrainedModel):
 def build_model(tokenizer):
     model = KoToNe(PretrainedConfig(), encoder, decoder, lm_head, tokenizer).to(device)
 
-    # Freeze encoder entirely
+    # Freeze encoder entirely first
     for param in model.encoder.parameters():
+        param.requires_grad = False
+
+    # Unfreeze top 6 transformer layers of the encoder
+    # XLS-R (wav2vec2-large) has 24 transformer layers (indexed 0-23)
+    # Top 6 = layers 18-23
+    num_encoder_layers = len(model.encoder.encoder.layers)  # should be 24
+    unfreeze_top_n = 6
+
+    for i, layer in enumerate(model.encoder.encoder.layers):
+        if i >= num_encoder_layers - unfreeze_top_n:
+            for param in layer.parameters():
+                param.requires_grad = True
+
+    # Keep CNN feature extractor frozen regardless
+    for param in model.encoder.feature_extractor.parameters():
+        param.requires_grad = False
+    for param in model.encoder.feature_projection.parameters():
         param.requires_grad = False
 
     # Freeze decoder except for cross-attention

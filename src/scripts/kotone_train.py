@@ -53,11 +53,13 @@ training_args = Seq2SeqTrainingArguments(
     gradient_accumulation_steps=8,
     # --------------------------------------------
     # TODO: Look into NAS?
-    learning_rate=3e-4,
+    learning_rate=1e-4,  # 3e-4,
+    max_grad_norm=1.0,
+    warmup_ratio=0.05,
     # lr_scheduler_type=...
     # warmup_steps=...
     # --------------------------------------------
-    num_train_epochs=200,
+    num_train_epochs=5,
     eval_strategy="epoch",
     save_strategy="epoch",
     save_total_limit=1,
@@ -66,6 +68,7 @@ training_args = Seq2SeqTrainingArguments(
     load_best_model_at_end=True,
     metric_for_best_model="loss",
     remove_unused_columns=False,
+    lr_scheduler_type="cosine",
 )
 
 trainer = Seq2SeqTrainer(

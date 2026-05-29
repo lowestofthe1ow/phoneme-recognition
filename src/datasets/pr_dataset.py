@@ -11,7 +11,6 @@ from datasets import DatasetDict
 
 RANDOM_STATE = 765
 TARGET_SR = 16000
-
 _parquet_cache: dict[str, pd.DataFrame] = {}
 
 
@@ -28,13 +27,29 @@ def _load_fsc(path: str) -> tuple[torch.Tensor, int]:
 
 class PhonemeDataset(Dataset):
     def __init__(self, manifest_path, tokenizer):
+        import random  # Place at the top of your file, or here if needed
+
         with open(manifest_path) as f:
             self.samples = [json.loads(line) for line in f]
-        self.samples = [
+
+        # 1. Filter the samples first
+        filtered_samples = [
             s
             for s in self.samples
             if 0.4 <= s["duration"] <= 10.0 and len(s["text"].split()) <= 10
         ]
+
+        # 2. Add this line to take a random 10,000 sample subset (or less if the dataset is small)
+        sampled_subset = random.sample(
+            filtered_samples, min(len(filtered_samples), 10000)
+        )
+
+        # 3. Sort the final random subset
+        self.samples = sorted(
+            sampled_subset,
+            key=lambda s: s["duration"],
+        )
+
         self.tokenizer = tokenizer
 
     def __len__(self):
@@ -66,7 +81,6 @@ class PhonemeDataCollator:
         labels = torch.nn.utils.rnn.pad_sequence(
             [item["labels"] for item in batch], batch_first=True, padding_value=-100
         )
-
         decoder_input_ids = labels.clone()
         decoder_input_ids[decoder_input_ids == -100] = self.tokenizer.pad_token_id
         decoder_input_ids = torch.cat(
@@ -80,7 +94,6 @@ class PhonemeDataCollator:
             ],
             dim=1,
         )
-
         return {
             "audio_values": audio,
             "decoder_input_ids": decoder_input_ids,
