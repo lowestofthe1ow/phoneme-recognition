@@ -11,42 +11,33 @@ from datasets import DatasetDict
 
 RANDOM_STATE = 765
 TARGET_SR = 16000
+
+# Cache files from the parquet here
 _parquet_cache: dict[str, pd.DataFrame] = {}
 
 
-def _load_fsc(path: str) -> tuple[torch.Tensor, int]:
+def _load_fsc():
+    """Used when loading a parquet file, as is the case with FSC"""
     parquet_file, sample_key = path.removeprefix("fsc://").rsplit("/", 1)
+
     if parquet_file not in _parquet_cache:
         _parquet_cache[parquet_file] = pd.read_parquet(
             "data/filipinospeechcorpus/data/" + parquet_file
         )
+
     idx = int(sample_key.removeprefix("sample_").removesuffix(".wav"))
     audio_bytes = _parquet_cache[parquet_file].loc[idx, "audio"]["bytes"]
+
     return torchaudio.load(io.BytesIO(audio_bytes))
 
 
 class PhonemeDataset(Dataset):
     def __init__(self, manifest_path, tokenizer):
-        import random  # Place at the top of your file, or here if needed
-
         with open(manifest_path) as f:
             self.samples = [json.loads(line) for line in f]
 
-        # 1. Filter the samples first
-        filtered_samples = [
-            s
-            for s in self.samples
-            if 0.4 <= s["duration"] <= 10.0 and len(s["text"].split()) <= 10
-        ]
-
-        # 2. Add this line to take a random 10,000 sample subset (or less if the dataset is small)
-        sampled_subset = random.sample(
-            filtered_samples, min(len(filtered_samples), 10000)
-        )
-
-        # 3. Sort the final random subset
         self.samples = sorted(
-            sampled_subset,
+            self.samples,
             key=lambda s: s["duration"],
         )
 
@@ -58,12 +49,27 @@ class PhonemeDataset(Dataset):
     def __getitem__(self, idx):
         sample = self.samples[idx]
         path = sample["audio_filepath"]
+
+        # TODO: Added a custom prefix for the FSC dataset, but this is probably
+        # really clunky so we should figure out a better way. Works for now.
         load_fn = _load_fsc if path.startswith("fsc://") else torchaudio.load
         waveform, sr = load_fn(path)
+
+        # Downsample to target sample rate
         if sr != TARGET_SR:
             waveform = torchaudio.functional.resample(waveform, sr, TARGET_SR)
+
+        # In case of stereo audio, average the left and right channels to
+        # produce a mono signal
+        waveform = waveform.mean(0)
+
+        # z-score normalization for wav2vec2
+        # 1e-7 as epsilon to prevent division by zero
+        # TODO: Probably better to NOT do this manually...
+        waveform = (waveform - waveform.mean()) / torch.sqrt(waveform.var() + 1e-7)
+
         return {
-            "audio_values": waveform.mean(0),
+            "audio_values": waveform,
             "labels": self.tokenizer(
                 sample["text"], return_tensors="pt"
             ).input_ids.squeeze(0),
@@ -75,28 +81,25 @@ class PhonemeDataCollator:
         self.tokenizer = tokenizer
 
     def __call__(self, batch):
+        # Pad audio
         audio = torch.nn.utils.rnn.pad_sequence(
-            [item["audio_values"] for item in batch], batch_first=True
+            [item["audio_values"] for item in batch],
+            batch_first=True,
+            padding_value=0.0,
         )
+
+        attention_mask = torch.zeros_like(audio, dtype=torch.long)
+        for i, item in enumerate(batch):
+            attention_mask[i, : len(item["audio_values"])] = 1
+
+        # Pad labels
         labels = torch.nn.utils.rnn.pad_sequence(
             [item["labels"] for item in batch], batch_first=True, padding_value=-100
         )
-        decoder_input_ids = labels.clone()
-        decoder_input_ids[decoder_input_ids == -100] = self.tokenizer.pad_token_id
-        decoder_input_ids = torch.cat(
-            [
-                torch.full(
-                    (decoder_input_ids.size(0), 1),
-                    self.tokenizer.pad_token_id,
-                    dtype=torch.long,
-                ),
-                decoder_input_ids[:, :-1],
-            ],
-            dim=1,
-        )
+
         return {
             "audio_values": audio,
-            "decoder_input_ids": decoder_input_ids,
+            "attention_mask": attention_mask,
             "labels": labels,
         }
 

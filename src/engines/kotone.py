@@ -1,166 +1,165 @@
 import torch
 import torch.nn as nn
-from transformers import (
-    PretrainedConfig,
-    PreTrainedModel,
-    T5ForConditionalGeneration,
-    Wav2Vec2Model,
-)
+import torch.nn.functional as F
+from transformers import T5ForConditionalGeneration, Wav2Vec2Model
+from transformers.modeling_outputs import BaseModelOutput
 
-from src.engines.fusion import AudioProjection
+from src.engines.fusion import CONV_DOWNSAMPLE_FACTOR, CONV_KERNEL_SIZE, AudioProjection
 
-WAV2VEC_HF = "Khalsuu/filipino-wav2vec2-l-xls-r-300m-official"
+WAV2VEC2_HF = "Khalsuu/filipino-wav2vec2-l-xls-r-300m-official"
 G2P_CHECKPOINT = "models/g2p/checkpoint-9670"
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Load wav2vec encoder
-encoder = Wav2Vec2Model.from_pretrained(WAV2VEC_HF).to(device)
+class KoToNe(nn.Module):
+    """An architecture composed of a wav2vec2-based encoder and a ByT5-based
+    decoder, connected by a learnable projection.
 
-# Load ByT5 G2P decoder
-g2p = T5ForConditionalGeneration.from_pretrained(
-    G2P_CHECKPOINT,
-)
+    ┌───────────────────┐
+    │ ENCODER           │
+    │ filipino-wav2vec2 │
+    │ l-xls-r-300m      │
+    └─────────┬─────────┘
+              │
+              ▼
+    ┌───────────────────┐
+    │ Downsampling +    │
+    │ Projection        │
+    └─────────┬─────────┘
+              ├───────────┐
+              ▼           │
+    ┌───────────────────┐ │
+    │ DECODER           │ │
+    │ ByT5 from G2P     │ │
+    └────┬──────────────┘ │
+         │                │
+         ▼                ▼
+    ┌──────────┐   ┌──────────┐
+    │ CE loss  ├─┬─┤ CTC loss │ TODO: Implement CTC loss
+    └──────────┘ │ └──────────┘
+                 │
+                 ▼
+    ┌─────────────────────────┐
+    │ Combined weighted loss  │
+    └─────────────────────────┘
+    """
 
-decoder = g2p.decoder  # Decoder
-lm_head = g2p.lm_head  # Linear head on top of the decoder
+    def __init__(self):
+        super().__init__()
+        self.main_input_name = "audio_values"
 
-# Get rid of the rest of the G2P model to free up VRAM
-del g2p
-torch.cuda.empty_cache()
-
-""" High-level overview of the architecture
-
-┌───────────────────┐
-│ ENCODER           │
-│ filipino-wav2vec2 │
-│ l-xls-r-300m      │
-└─────────┬─────────┘
-          │
-          ▼
-┌───────────────────┐
-│ Downsampling +    │
-│ Projection        │
-└─────────┬─────────┘
-          ├───────────┐
-          ▼           │
-┌───────────────────┐ │
-│ DECODER           │ │
-│ ByT5 from G2P     │ │
-└────┬──────────────┘ │
-     │                │
-     ▼                ▼
-┌──────────┐   ┌──────────┐
-│ CE loss  ├─┬─┤ CTC loss │
-└──────────┘ │ └──────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│ Combined weighted loss  │
-└─────────────────────────┘
-"""
-
-
-class KoToNe(PreTrainedModel):
-    def __init__(self, config, encoder, decoder, lm_head, tokenizer):
-        super().__init__(config)
-        self.encoder = encoder
+        self.encoder = Wav2Vec2Model.from_pretrained(WAV2VEC2_HF)
         self.audio_proj = AudioProjection()
-        self.decoder = decoder
-        self.lm_head = lm_head
-        self.tokenizer = tokenizer
 
-    def forward(self, audio_values, decoder_input_ids, labels=None):
-        attention_mask = (audio_values != 0).long()
+        # Load T5 and strip the encoder to save VRAM
+        self.byt5 = T5ForConditionalGeneration.from_pretrained(G2P_CHECKPOINT)
+        del self.byt5.encoder
+
+        # Yoink config from the ByT5 model
+        self.config = self.byt5.config
+
+    def _get_projected(self, audio_values, attention_mask=None):
+        """Processes the inputs through the wav2vec2 encoder and the projection.
+        Outputs the projected inputs ready for the ByT5 decoder.
+        """
+        # Fall back to masking out zeroes in case no attention mask is provided
+        if attention_mask is None:
+            attention_mask = (audio_values != 0).long()
 
         encoder_out = self.encoder(
-            audio_values,
-            attention_mask=attention_mask,
+            audio_values, attention_mask=attention_mask
         ).last_hidden_state
 
         projected = self.audio_proj(encoder_out)
 
-        decoder_out = self.decoder(
-            input_ids=decoder_input_ids,
-            encoder_hidden_states=projected,
-        ).last_hidden_state
+        # The wav2vec2 encoder performs downsampling internally
+        # Get the sequence lengths after this downsampling, but BEFORE the
+        # downsampling in the bridge
+        feat_lengths = self.encoder._get_feat_extract_output_lengths(
+            attention_mask.sum(-1)
+        )
 
-        logits = self.lm_head(decoder_out)
+        # Get the sequence length AFTER the downsampling in the bridge
+        # Output length L_out is given by:
+        # (L_in + 2 * padding - dilation * (kernel size - 1) - 1) / stride + 1
+        # NOTE: Refer to PyTorch documentation:
+        # https://docs.pytorch.org/docs/2.12/generated/torch.nn.Conv1d.html
+        projected_lengths = (
+            (feat_lengths + 2 * 1 - 1 * (CONV_KERNEL_SIZE - 1) - 1)
+            // CONV_DOWNSAMPLE_FACTOR
+        ) + 1
 
-        if labels is not None:
-            # Standard cross-entropy at the decoder output
-            loss = nn.functional.cross_entropy(
-                logits.view(-1, logits.size(-1)),
-                labels.view(-1),
-                ignore_index=-100,
-            )
-            return loss, logits
+        # Inputs are of shape (B, S, D), so .size(1) gets sequence length
+        # Clamp lengths to the actual lengths of projected just in case
+        projected_lengths = torch.clamp(projected_lengths, min=0, max=projected.size(1))
 
-        return logits
+        # Build a new attention mask with size (B, S)
+        downsampled_mask = torch.zeros(
+            (attention_mask.shape[0], projected.size(1)),
+            dtype=torch.long,
+            device=audio_values.device,
+        )
 
-    def generate(self, audio_values, attention_mask=None, max_new_tokens=50):
-        with torch.no_grad():
-            encoder_out = self.encoder(
-                audio_values, attention_mask=attention_mask
-            ).last_hidden_state
+        for i, length in enumerate(projected_lengths):
+            downsampled_mask[i, :length] = 1
 
-            projected = self.audio_proj(encoder_out)
+        return projected, downsampled_mask
 
-            out = torch.zeros(
-                audio_values.size(0), 1, dtype=torch.long, device=audio_values.device
-            )
+    def forward(
+        self,
+        audio_values,
+        labels=None,
+        attention_mask=None,
+        decoder_input_ids=None,
+        decoder_attention_mask=None,
+        **kwargs,
+    ):
+        # Grab the projected inputs to ByT5 as well as the downsampled mask
+        projected, mask = self._get_projected(audio_values, attention_mask)
 
-            # Autoregressive inference
-            for _ in range(max_new_tokens):
-                hidden = self.decoder(
-                    input_ids=out, encoder_hidden_states=projected
-                ).last_hidden_state
+        # Delegate to the forward() call in the ByT5 model bypassing its encoder
+        # entirely, using our projected inputs instead
+        return self.byt5(
+            encoder_outputs=(projected,),
+            attention_mask=mask,
+            labels=labels,
+            decoder_input_ids=decoder_input_ids,
+            decoder_attention_mask=decoder_attention_mask,
+            **kwargs,
+        )
 
-                next_token = self.lm_head(hidden[:, -1:]).argmax(-1)
+    def generate(self, audio_values, attention_mask=None, **kwargs):
+        # Grab the projected inputs to ByT5 as well as the downsampled mask
+        projected, mask = self._get_projected(audio_values, attention_mask)
 
-                out = torch.cat([out, next_token], dim=1)
+        # Delegate to the forward() call in the ByT5 model bypassing its encoder
+        # entirely, using our projected inputs instead. This lets us use HF's
+        # optimizations
+        return self.byt5.generate(
+            encoder_outputs=BaseModelOutput(last_hidden_state=projected),
+            attention_mask=mask,
+            **kwargs,
+        )
 
-                if (next_token == self.tokenizer.eos_token_id).all():
-                    break
 
-        return out[:, 1:]
+def build_model():
+    model = KoToNe()
 
+    # TODO: Investigate selective freezing more
 
-def build_model(tokenizer):
-    model = KoToNe(PretrainedConfig(), encoder, decoder, lm_head, tokenizer).to(device)
-
-    # Freeze encoder entirely first
+    # Freeze wav2vec2 encoder except for top 6 layers
     for param in model.encoder.parameters():
         param.requires_grad = False
-
-    # Unfreeze top 6 transformer layers of the encoder
-    # XLS-R (wav2vec2-large) has 24 transformer layers (indexed 0-23)
-    # Top 6 = layers 18-23
-    num_encoder_layers = len(model.encoder.encoder.layers)  # should be 24
-    unfreeze_top_n = 6
-
-    for i, layer in enumerate(model.encoder.encoder.layers):
-        if i >= num_encoder_layers - unfreeze_top_n:
-            for param in layer.parameters():
-                param.requires_grad = True
-
-    # Keep CNN feature extractor frozen regardless
-    for param in model.encoder.feature_extractor.parameters():
-        param.requires_grad = False
-    for param in model.encoder.feature_projection.parameters():
-        param.requires_grad = False
-
-    # Freeze decoder except for cross-attention
-    for name, param in model.decoder.named_parameters():
-        if "EncDecAttention" in name:
+    for layer in model.encoder.encoder.layers[-6:]:
+        for param in layer.parameters():
             param.requires_grad = True
-        else:
-            param.requires_grad = False
 
-    # Calculate trainable parameters
+    # Freeze ByT5 decoder except for cross-attention
+    for name, param in model.byt5.decoder.named_parameters():
+        param.requires_grad = "EncDecAttention" in name
+
+    # Print number of trainable parameters
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
-
     print(
         f"Trainable parameters: {trainable:,} / {total:,} ({100 * trainable / total:.2f}%)"
     )
