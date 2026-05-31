@@ -78,12 +78,12 @@ training_args = Seq2SeqTrainingArguments(
     gradient_accumulation_steps=8,
     # --------------------------------------------
     # TODO: Hyperparameter tuning
-    learning_rate=1e-4,
+    # learning_rate=1e-4,
     lr_scheduler_type="cosine",
     warmup_ratio=0.05,  # TODO: Use steps
     max_grad_norm=1.0,
     # --------------------------------------------
-    num_train_epochs=100,
+    num_train_epochs=60,
     eval_strategy="epoch",
     save_strategy="epoch",
     save_total_limit=1,
@@ -98,7 +98,7 @@ training_args = Seq2SeqTrainingArguments(
 )
 
 # TODO: Can use grouped parameters to control LR...?
-"""
+# """
 optimizer_grouped_parameters = [
     {  # Bridge layers train with a higher LR (1e-3)
         "params": [
@@ -115,11 +115,11 @@ optimizer_grouped_parameters = [
         "lr": 5e-5,
     },
 ]
-optimizer = torch.optim.AdamW()
-"""
+optimizer = torch.optim.AdamW(optimizer_grouped_parameters)
+# """
 
 trainer = Seq2SeqTrainer(
-    # optimizers=(optimizer, None),
+    optimizers=(optimizer, None),
     model=model,
     args=training_args,
     train_dataset=dataset["train"],

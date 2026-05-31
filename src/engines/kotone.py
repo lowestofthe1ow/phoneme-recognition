@@ -25,22 +25,12 @@ class KoToNe(nn.Module):
     │ Downsampling +    │
     │ Projection        │
     └─────────┬─────────┘
-              ├───────────┐
-              ▼           │
-    ┌───────────────────┐ │
-    │ DECODER           │ │
-    │ ByT5 from G2P     │ │
-    └────┬──────────────┘ │
-         │                │
-         ▼                ▼
-    ┌──────────┐   ┌──────────┐
-    │ CE loss  ├─┬─┤ CTC loss │ TODO: Implement CTC loss
-    └──────────┘ │ └──────────┘
-                 │
-                 ▼
-    ┌─────────────────────────┐
-    │ Combined weighted loss  │
-    └─────────────────────────┘
+              │
+              ▼
+    ┌───────────────────┐
+    │ DECODER           │
+    │ ByT5 from G2P     │
+    └───────────────────┘
     """
 
     def __init__(self):
@@ -163,7 +153,10 @@ def build_model():
 
     # Freeze ByT5 decoder except for cross-attention
     for name, param in model.byt5.decoder.named_parameters():
-        param.requires_grad = "EncDecAttention" in name
+        if "EncDecAttention" in name or "SelfAttention" in name:
+            param.requires_grad = True
+        else:
+            param.requires_grad = False
 
     # Print number of trainable parameters
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
