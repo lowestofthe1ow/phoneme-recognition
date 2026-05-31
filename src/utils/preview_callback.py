@@ -21,14 +21,14 @@ class PreviewCallback(TrainerCallback):
         inputs = self.data_collator(batch_list)
 
         audio = inputs["audio_values"].to(args.device)
-        attention_mask = (audio != 0).long()
+        attention_mask = inputs["attention_mask"].to(args.device)
 
         model_inputs = {
             "audio_values": audio,
             "attention_mask": attention_mask,
         }
 
-        generated_tokens = kwargs["model"].generate(**model_inputs, max_new_tokens=50)
+        generated_tokens = kwargs["model"].generate(**model_inputs)
 
         preds = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
         labels = inputs["labels"].clone()

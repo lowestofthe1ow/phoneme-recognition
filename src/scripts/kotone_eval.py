@@ -12,9 +12,7 @@ TEST_MANIFEST = "data/nexdata/filipino_822/test_manifest.json"
 
 DEFAULT_MODEL_ID = "charsiu/g2p_multilingual_byT5_small_100"
 
-CHECKPOINT = "models/checkpoints/2026-05-30_15-19_kotone/checkpoint-1014"
-
-BATCH_SIZE = 8
+CHECKPOINT = "models/checkpoints/2026-05-31_08-54_kotone/checkpoint-1872"
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_ID)
@@ -43,7 +41,10 @@ for i in range(0, len(test_set), BATCH_SIZE):
     attention_mask = inputs["attention_mask"].to(device)
 
     with torch.no_grad():
-        generated = model.generate(audio, attention_mask, max_length=256)
+        generated = model.generate(
+            audio,
+            attention_mask,
+        )
 
     labels = inputs["labels"].clone()
     labels[labels == -100] = tokenizer.pad_token_id
@@ -54,8 +55,8 @@ for i in range(0, len(test_set), BATCH_SIZE):
     # Calculate (POOLED) CER as well as print predictions
     # TODO: PER and PFER
     for p, l in zip(preds, refs):
-        total_errors += editdistance.eval(p, r)
-        total_chars += len(r)
+        total_errors += editdistance.eval(p, l)
+        total_chars += len(l)
 
         print("-" * 40)
         print(f"Target:  {l}")

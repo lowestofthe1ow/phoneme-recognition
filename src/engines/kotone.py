@@ -56,6 +56,7 @@ class KoToNe(nn.Module):
 
         # Yoink config from the ByT5 model
         self.config = self.byt5.config
+        self.generation_config = self.byt5.generation_config
 
     def _get_projected(self, audio_values, attention_mask=None):
         """Processes the inputs through the wav2vec2 encoder and the projection.
@@ -143,6 +144,13 @@ class KoToNe(nn.Module):
 
 def build_model():
     model = KoToNe()
+
+    # TODO: Investigate max length and beam search more
+
+    # Default generation options
+    model.generation_config.max_length = 256
+    model.generation_config.early_stopping = True
+    model.generation_config.num_beams = 4
 
     # TODO: Investigate selective freezing more
 

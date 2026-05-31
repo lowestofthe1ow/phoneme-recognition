@@ -2,6 +2,8 @@ import argparse
 import json
 from datetime import datetime
 
+import editdistance
+import numpy as np
 import torch
 from transformers import (
     AutoTokenizer,
@@ -42,17 +44,44 @@ data_collator = PhonemeDataCollator(tokenizer)
 
 run_id = datetime.now().strftime("%Y-%m-%d_%H-%M")
 
+
+def compute_metrics(eval_preds):
+    """Computes the character error rate (CER) during evaluation"""
+
+    # TODO: Implement PER and PFER (?)
+
+    generated, labels = eval_preds
+
+    if isinstance(generated, tuple):
+        generated = generated[0]
+
+    generated = np.where(generated != -100, generated, tokenizer.pad_token_id)
+    labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+
+    preds = tokenizer.batch_decode(generated, skip_special_tokens=True)
+    refs = tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+    total_errors = sum(editdistance.eval(p, r) for p, r in zip(preds, refs))
+    total_chars = sum(len(r) for r in refs)
+
+    return {"cer": total_errors / total_chars if total_chars > 0 else 1.0}
+
+
 training_args = Seq2SeqTrainingArguments(
     output_dir=f"./models/checkpoints/{run_id}_kotone",
     bf16=True,
+    optim="adamw_torch",
     # fp16=True,
     # --------------------------------------------
+    # Effective batch size: 8 * 2 = 16
     per_device_train_batch_size=2,
     gradient_accumulation_steps=8,
     # --------------------------------------------
     # TODO: Hyperparameter tuning
+    learning_rate=1e-4,
+    lr_scheduler_type="cosine",
+    warmup_ratio=0.05,  # TODO: Use steps
     max_grad_norm=1.0,
-    warmup_ratio=0.05,
     # --------------------------------------------
     num_train_epochs=100,
     eval_strategy="epoch",
@@ -60,13 +89,16 @@ training_args = Seq2SeqTrainingArguments(
     save_total_limit=1,
     logging_steps=10,
     # --------------------------------------------
+    predict_with_generate=True,
+    # --------------------------------------------
     load_best_model_at_end=True,
-    metric_for_best_model="loss",
+    metric_for_best_model="cer",
+    greater_is_better=False,
     remove_unused_columns=False,
-    lr_scheduler_type="cosine",
 )
 
-# TODO: Hyperparameter tuning
+# TODO: Can use grouped parameters to control LR...?
+"""
 optimizer_grouped_parameters = [
     {  # Bridge layers train with a higher LR (1e-3)
         "params": [
@@ -83,17 +115,18 @@ optimizer_grouped_parameters = [
         "lr": 5e-5,
     },
 ]
-
-optimizer = torch.optim.AdamW(optimizer_grouped_parameters)
+optimizer = torch.optim.AdamW()
+"""
 
 trainer = Seq2SeqTrainer(
-    optimizers=(optimizer, None),
+    # optimizers=(optimizer, None),
     model=model,
     args=training_args,
     train_dataset=dataset["train"],
     eval_dataset=dataset["validation"],
     data_collator=data_collator,
     callbacks=[PreviewCallback(dataset["validation"], data_collator, tokenizer)],
+    compute_metrics=compute_metrics,
 )
 
 trainer.train()
