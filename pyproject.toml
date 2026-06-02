@@ -11,6 +11,7 @@ dependencies = [
     "jupyter>=1.1.1",
     "lab>=8.8",
     "nemo-toolkit[asr]>=2.3.0",
+    "questionary>=2.1.1",
     "scikit-learn>=1.8.0",
     "torch>=2.4.0",
     "torchaudio>=2.11.0",

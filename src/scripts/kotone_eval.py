@@ -1,3 +1,5 @@
+import argparse
+
 import editdistance
 import torch
 from safetensors.torch import load_file
@@ -6,27 +8,26 @@ from transformers import AutoTokenizer
 from src.datasets.pr_dataset import PhonemeDataCollator, dataset_from_manifests
 from src.engines.kotone import build_model
 
-TRAIN_MANIFEST = "data/nexdata/filipino_822/train_manifest.json"
-VALID_MANIFEST = "data/nexdata/filipino_822/valid_manifest.json"
 TEST_MANIFEST = "data/nexdata/filipino_822/test_manifest.json"
-
 DEFAULT_MODEL_ID = "charsiu/g2p_multilingual_byT5_small_100"
+BATCH_SIZE = 8
 
-CHECKPOINT = "models/checkpoints/2026-05-31_23-13_kotone/checkpoint-1794"
-
-BATCH_SIZE = 4
+parser = argparse.ArgumentParser()
+parser.add_argument("--checkpoint-path", default=TEST_MANIFEST)
+parser.add_argument("--test-manifest-path", default=TEST_MANIFEST)
+args = parser.parse_args()
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_ID)
 
 model = build_model()
-model.load_state_dict(load_file(f"{CHECKPOINT}/model.safetensors"), strict=False)
+model.load_state_dict(
+    load_file(f"{args.checkpoint_path}/model.safetensors"), strict=False
+)
 model.to(device)
 model.eval()
 
-dataset = dataset_from_manifests(
-    TRAIN_MANIFEST, VALID_MANIFEST, TEST_MANIFEST, tokenizer
-)
+dataset = dataset_from_manifests(None, None, args.test_manifest_path, tokenizer)
 data_collator = PhonemeDataCollator(tokenizer)
 test_set = dataset["test"]
 

@@ -16,7 +16,7 @@ TARGET_SR = 16000
 _parquet_cache: dict[str, pd.DataFrame] = {}
 
 
-def _load_fsc():
+def _load_fsc(path):
     """Used when loading a parquet file, as is the case with FSC"""
     parquet_file, sample_key = path.removeprefix("fsc://").rsplit("/", 1)
 
@@ -107,8 +107,20 @@ class PhonemeDataCollator:
 def dataset_from_manifests(train_manifest, val_manifest, test_manifest, tokenizer):
     return DatasetDict(
         {
-            "train": PhonemeDataset(train_manifest, tokenizer),
-            "validation": PhonemeDataset(val_manifest, tokenizer),
-            "test": PhonemeDataset(test_manifest, tokenizer),
+            "train": (
+                PhonemeDataset(train_manifest, tokenizer)
+                if train_manifest is not None
+                else None
+            ),
+            "validation": (
+                PhonemeDataset(val_manifest, tokenizer)
+                if val_manifest is not None
+                else None
+            ),
+            "test": (
+                PhonemeDataset(test_manifest, tokenizer)
+                if test_manifest is not None
+                else None
+            ),
         }
     )
