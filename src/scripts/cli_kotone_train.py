@@ -6,23 +6,7 @@ import questionary
 
 from src.utils.cli_utils import get_checkpoints, get_manifest_files
 
-
-def get_manifest_files(base_dir=DEFAULT_DATA_DIR):
-    path = Path(base_dir)
-    if not path.exists():
-        print(f"Error: Directory '{base_dir}' does not exist.")
-        sys.exit(1)
-
-    # Recursively check all subdirectories for .json files
-    manifests = [str(p) for p in path.rglob("*.json") if p.is_file()]
-
-    if not manifests:
-        print(f"Error: No .json files found in '{base_dir}'.")
-        sys.exit(1)
-
-    return sorted(manifests)
-
-
+checkpoints = get_checkpoints()
 available_manifests = get_manifest_files()
 
 # Prompt user to select the test manifest
@@ -52,6 +36,26 @@ if not valid_manifest:
     print("Cancelled by user.")
     sys.exit(0)
 
+# Prompt user to select the validation manifest
+mode = questionary.select(
+    "Select training mode:",
+    choices=["ce-only", "ctc-only", "combined"],
+    use_indicator=True,
+).ask()
+
+if not mode:
+    print("Cancelled by user.")
+    sys.exit(0)
+
+# Prompt user to select a base CTC model to train from
+checkpoints.append("Train from scratch")
+
+checkpoint = questionary.select(
+    "Select base checkpoint to train from:",
+    choices=checkpoints,
+    use_indicator=True,
+).ask()
+
 # Build the command execution array for uv
 cmd = [
     "uv",
@@ -65,7 +69,12 @@ cmd = [
     train_manifest,
     "--valid-manifest-path",
     valid_manifest,
+    "--mode",
+    mode,
 ]
+
+if checkpoint != "Train from scratch":
+    cmd.extend(["--ctc-checkpoint-path", checkpoint])
 
 print(f"\nRunning command: {' '.join(cmd)}\n")
 

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from safetensors.torch import load_file  # <-- Added to load your checkpoint
 from transformers import T5ForConditionalGeneration, Wav2Vec2Model
 from transformers.modeling_outputs import BaseModelOutput
 
@@ -52,6 +53,10 @@ class KoToNe(nn.Module):
         """Processes the inputs through the wav2vec2 encoder and the projection.
         Outputs the projected inputs ready for the ByT5 decoder.
         """
+
+        # TODO: Made this return the encoder outputs for now. Probably better
+        # to separate it in practice. This is used in the auxiliary CTC head.
+
         # Fall back to masking out zeroes in case no attention mask is provided
         if attention_mask is None:
             attention_mask = (audio_values != 0).long()
@@ -93,7 +98,7 @@ class KoToNe(nn.Module):
         for i, length in enumerate(projected_lengths):
             downsampled_mask[i, :length] = 1
 
-        return projected, downsampled_mask
+        return projected, downsampled_mask, projected_lengths, encoder_out
 
     def forward(
         self,
@@ -105,11 +110,13 @@ class KoToNe(nn.Module):
         **kwargs,
     ):
         # Grab the projected inputs to ByT5 as well as the downsampled mask
-        projected, mask = self._get_projected(audio_values, attention_mask)
+        projected, mask, projected_lengths, _ = self._get_projected(
+            audio_values, attention_mask
+        )
 
         # Delegate to the forward() call in the ByT5 model bypassing its encoder
         # entirely, using our projected inputs instead
-        return self.byt5(
+        outputs = self.byt5(
             encoder_outputs=(projected,),
             attention_mask=mask,
             labels=labels,
@@ -118,9 +125,11 @@ class KoToNe(nn.Module):
             **kwargs,
         )
 
+        return outputs
+
     def generate(self, audio_values, attention_mask=None, **kwargs):
         # Grab the projected inputs to ByT5 as well as the downsampled mask
-        projected, mask = self._get_projected(audio_values, attention_mask)
+        projected, mask, _, _ = self._get_projected(audio_values, attention_mask)
 
         # Delegate to the forward() call in the ByT5 model bypassing its encoder
         # entirely, using our projected inputs instead. This lets us use HF's
@@ -130,39 +139,3 @@ class KoToNe(nn.Module):
             attention_mask=mask,
             **kwargs,
         )
-
-
-def build_model():
-    model = KoToNe()
-
-    # TODO: Investigate max length and beam search more
-
-    # Default generation options
-    model.generation_config.max_length = 256
-    model.generation_config.early_stopping = True
-    model.generation_config.num_beams = 4
-
-    # TODO: Investigate selective freezing more
-
-    # Freeze wav2vec2 encoder except for top 6 layers
-    for param in model.encoder.parameters():
-        param.requires_grad = False
-    for layer in model.encoder.encoder.layers[-6:]:
-        for param in layer.parameters():
-            param.requires_grad = True
-
-    # Freeze ByT5 decoder except for cross-attention
-    for name, param in model.byt5.decoder.named_parameters():
-        if "EncDecAttention" in name or "SelfAttention" in name:
-            param.requires_grad = True
-        else:
-            param.requires_grad = False
-
-    # Print number of trainable parameters
-    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    total = sum(p.numel() for p in model.parameters())
-    print(
-        f"Trainable parameters: {trainable:,} / {total:,} ({100 * trainable / total:.2f}%)"
-    )
-
-    return model
