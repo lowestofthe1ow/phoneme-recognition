@@ -2,7 +2,9 @@
 # Main directories .gitignore
 # ==============================================================================
 
-data/
+data/**/*
+!data/**/
+!data/**/*.json
 models/
 nemo_experiments/
 evaluation_transcripts.json
