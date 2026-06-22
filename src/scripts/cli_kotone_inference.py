@@ -1,0 +1,48 @@
+import subprocess
+import sys
+from pathlib import Path
+
+import questionary
+
+from src.utils.cli_utils import get_checkpoints
+
+SINGLE_SAMPLES_DIR = Path("data/single_samples")
+
+# List all available checkpoints
+checkpoints = get_checkpoints()
+if not checkpoints:
+    print("No checkpoints found.")
+    sys.exit(1)
+
+selected_checkpoint = questionary.select(
+    "Choose a checkpoint to evaluate:", choices=checkpoints, use_indicator=True
+).ask()
+if not selected_checkpoint:
+    print("Cancelled by user.")
+    sys.exit(0)
+
+wav_files = sorted(SINGLE_SAMPLES_DIR.rglob("*.wav"))
+if not wav_files:
+    print(f"No .wav files found in {SINGLE_SAMPLES_DIR}.")
+    sys.exit(1)
+
+selected_wav = questionary.select(
+    "Choose a .wav file:", choices=[str(p) for p in wav_files], use_indicator=True
+).ask()
+if not selected_wav:
+    print("Cancelled by user.")
+    sys.exit(0)
+
+cmd = [
+    "uv",
+    "run",
+    "python3",
+    "-m",
+    "src.scripts.kotone_inference",
+    "--checkpoint-path",
+    selected_checkpoint,
+    "--wav-path",
+    selected_wav,
+]
+print(f"\nRunning command: {' '.join(cmd)}\n")
+subprocess.run(cmd, check=True)
