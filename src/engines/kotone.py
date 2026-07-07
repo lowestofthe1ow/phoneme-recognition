@@ -8,7 +8,7 @@ from transformers.modeling_outputs import BaseModelOutput
 from src.engines.fusion import CONV_DOWNSAMPLE_FACTOR, CONV_KERNEL_SIZE, AudioProjection
 
 WAV2VEC2_HF = "Khalsuu/filipino-wav2vec2-l-xls-r-300m-official"
-G2P_CHECKPOINT = "models/g2p/checkpoint-9670"
+G2P_CHECKPOINT = "models/g2p/checkpoint-14500"
 
 
 class KoToNe(nn.Module):
@@ -98,7 +98,7 @@ class KoToNe(nn.Module):
         for i, length in enumerate(projected_lengths):
             downsampled_mask[i, :length] = 1
 
-        return projected, downsampled_mask, projected_lengths, encoder_out
+        return projected, downsampled_mask, projected_lengths, encoder_out, feat_lengths
 
     def forward(
         self,
@@ -110,7 +110,7 @@ class KoToNe(nn.Module):
         **kwargs,
     ):
         # Grab the projected inputs to ByT5 as well as the downsampled mask
-        projected, mask, projected_lengths, _ = self._get_projected(
+        projected, mask, projected_lengths, _, feat_lengths = self._get_projected(
             audio_values, attention_mask
         )
 
@@ -129,7 +129,9 @@ class KoToNe(nn.Module):
 
     def generate(self, audio_values, attention_mask=None, **kwargs):
         # Grab the projected inputs to ByT5 as well as the downsampled mask
-        projected, mask, _, _ = self._get_projected(audio_values, attention_mask)
+        projected, mask, _, _, feat_lengths = self._get_projected(
+            audio_values, attention_mask
+        )
 
         # Delegate to the forward() call in the ByT5 model bypassing its encoder
         # entirely, using our projected inputs instead. This lets us use HF's

@@ -1,5 +1,7 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from transformers.modeling_outputs import BaseModelOutput
 
 from src.engines.kotone import KoToNe
 
@@ -24,12 +26,10 @@ class KoToNeCombined(KoToNe):
         **kwargs,
     ):
         # Grab the projected inputs to ByT5 as well as the downsampled mask
-        projected, mask, projected_lengths, encoder_out = self._get_projected(
-            audio_values, attention_mask
+        projected, mask, projected_lengths, encoder_out, feat_lengths = (
+            self._get_projected(audio_values, attention_mask)
         )
 
-        # Delegate to the forward() call in the ByT5 model bypassing its encoder
-        # entirely, using our projected inputs instead
         outputs = self.byt5(
             encoder_outputs=(projected,),
             attention_mask=mask,
@@ -39,11 +39,8 @@ class KoToNeCombined(KoToNe):
             **kwargs,
         )
 
-        # Grab CTC logits and loss if training with it
         if labels is not None:
             ctc_logits = self.ctc_head(encoder_out)
-
-            # PyTorch CTCLoss expects (Seq, Batch, Vocab) with log probabilities
             log_probs = F.log_softmax(ctc_logits, dim=-1).transpose(0, 1)
 
             target_lengths = (labels != -100).sum(dim=-1)
@@ -53,13 +50,11 @@ class KoToNeCombined(KoToNe):
             ctc_loss = self.ctc_loss(
                 log_probs,
                 ctc_targets,
-                input_lengths=projected_lengths,
+                input_lengths=feat_lengths,
                 target_lengths=target_lengths,
             )
 
-            # Combine losses
             ce_loss = outputs.loss
-
             print(f"CE: {ce_loss}; CTC: {ctc_loss}")
 
             outputs.loss = (self.ctc_weight * ctc_loss) + (
@@ -67,3 +62,87 @@ class KoToNeCombined(KoToNe):
             )
 
         return outputs
+
+    def generate(
+        self, audio_values, attention_mask=None, ctc_weight=0.3, num_beams=5, **kwargs
+    ):
+        projected, mask, projected_lengths, encoder_out, feat_lengths = (
+            self._get_projected(audio_values, attention_mask)
+        )
+
+        batch_size = audio_values.size(0)
+
+        num_return = kwargs.pop("num_return_sequences", num_beams)
+
+        gen_out = self.byt5.generate(
+            encoder_outputs=BaseModelOutput(last_hidden_state=projected),
+            attention_mask=mask,
+            num_beams=num_beams,
+            num_return_sequences=num_return,
+            output_scores=True,
+            return_dict_in_generate=True,
+            **kwargs,
+        )
+
+        sequences = gen_out.sequences  # (B*num_return, L)
+        attn_scores = gen_out.sequences_scores  # length-normalized avg log-prob
+
+        # CTC forward pass over the shared encoder output
+        ctc_logits = self.ctc_head(encoder_out)  # (B, T, V+1)
+        log_probs = F.log_softmax(ctc_logits, dim=-1).transpose(0, 1)  # (T, B, V+1)
+        log_probs = log_probs.repeat_interleave(
+            num_return, dim=1
+        )  # (T, B*num_return, V+1)
+        input_lengths = feat_lengths.repeat_interleave(num_return, dim=0)
+
+        # Format targets
+        targets = sequences
+        if targets.size(1) > 0:
+            starts_with_pad = targets[:, 0] == self.config.pad_token_id
+            if starts_with_pad.all():
+                targets = targets[:, 1:]
+            elif starts_with_pad.any():
+                raise RuntimeError(
+                    "Inconsistent decoder start tokens across generated "
+                    "sequences; refusing to strip a single leading column "
+                    "since that would misalign some hypotheses."
+                )
+
+        target_lengths = (targets != self.config.pad_token_id).sum(dim=-1).clamp(min=1)
+
+        per_hyp_ctc_nll = F.ctc_loss(
+            log_probs,
+            targets,
+            input_lengths=input_lengths,
+            target_lengths=target_lengths,
+            blank=self.config.vocab_size,
+            zero_infinity=True,
+            reduction="none",
+        )  # (B*num_return,) lower = better
+
+        length_penalty = kwargs.get("length_penalty")
+        if length_penalty is None:
+            length_penalty = getattr(
+                self.byt5.generation_config, "length_penalty", None
+            )
+        if length_penalty is None:
+            length_penalty = 1.0
+
+        lengths_pow = target_lengths.float() ** length_penalty
+
+        unnormalized_attn_log_probs = attn_scores * lengths_pow
+
+        ctc_log_probs = -per_hyp_ctc_nll
+
+        combined_unnormalized = (
+            1 - ctc_weight
+        ) * unnormalized_attn_log_probs + ctc_weight * ctc_log_probs
+
+        # TODO: Normalize by length?
+        combined_scores = combined_unnormalized
+
+        combined_scores = combined_scores.view(batch_size, num_return)
+        best_idx = combined_scores.argmax(dim=-1)
+
+        sequences = sequences.view(batch_size, num_return, -1)
+        return sequences[torch.arange(batch_size), best_idx]
