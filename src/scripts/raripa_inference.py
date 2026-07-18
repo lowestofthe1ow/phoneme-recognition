@@ -5,7 +5,7 @@ import torchaudio
 from safetensors.torch import load_file
 from transformers import AutoTokenizer
 
-from src.engines.kotone_build import build_model
+from src.engines.raripa_build import build_model
 
 DEFAULT_MODEL_ID = "charsiu/g2p_multilingual_byT5_small_100"
 TARGET_SR = 16000

@@ -1,10 +1,10 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.engines.kotone import KoToNe
+from src.engines.raripa import RARIPA
 
 
-class KoToNeCTC(KoToNe):
+class RARIPACTC(RARIPA):
     def __init__(self):
         super().__init__()
 

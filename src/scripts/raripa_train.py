@@ -13,7 +13,7 @@ from transformers import (
 )
 
 from src.datasets.pr_dataset import PhonemeDataCollator, dataset_from_manifests
-from src.engines.kotone_build import build_model
+from src.engines.raripa_build import build_model
 from src.utils.preview_callback import PreviewCallback
 
 # Requires manifest files following NeMo's format
@@ -73,7 +73,7 @@ def compute_metrics(eval_preds):
 
 
 training_args = Seq2SeqTrainingArguments(
-    output_dir=f"./models/checkpoints/{run_id}_kotone",
+    output_dir=f"./models/checkpoints/{run_id}_raripa",
     bf16=True,
     optim="adamw_torch",
     # fp16=True,

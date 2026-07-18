@@ -12,7 +12,7 @@ from safetensors.torch import load_file
 from transformers import AutoTokenizer
 
 from src.datasets.pr_dataset import PhonemeDataCollator, dataset_from_manifests
-from src.engines.kotone_build import build_model
+from src.engines.raripa_build import build_model
 from src.metrics.evaluation import Metrics
 
 TEST_MANIFEST = "data/nexdata/filipino_822/test_manifest.json"

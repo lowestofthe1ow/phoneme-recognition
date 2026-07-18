@@ -38,7 +38,7 @@ cmd = [
     "run",
     "python3",
     "-m",
-    "src.scripts.kotone_inference",
+    "src.scripts.raripa_inference",
     "--checkpoint-path",
     selected_checkpoint,
     "--wav-path",

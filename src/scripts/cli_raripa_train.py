@@ -62,7 +62,7 @@ cmd = [
     "run",
     "python3",
     "-m",
-    "src.scripts.kotone_train",
+    "src.scripts.raripa_train",
     "--test-manifest-path",
     test_manifest,
     "--train-manifest-path",

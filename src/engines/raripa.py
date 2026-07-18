@@ -11,7 +11,7 @@ WAV2VEC2_HF = "Khalsuu/filipino-wav2vec2-l-xls-r-300m-official"
 G2P_CHECKPOINT = "models/g2p/checkpoint-14500"
 
 
-class KoToNe(nn.Module):
+class RARIPA(nn.Module):
     """An architecture composed of a wav2vec2-based encoder and a ByT5-based
     decoder, connected by a learnable projection.
 

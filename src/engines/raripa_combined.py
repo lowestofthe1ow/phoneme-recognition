@@ -3,10 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers.modeling_outputs import BaseModelOutput
 
-from src.engines.kotone import KoToNe
+from src.engines.raripa import RARIPA
 
 
-class KoToNeCombined(KoToNe):
+class RARIPACombined(RARIPA):
     def __init__(self):
         super().__init__()
 

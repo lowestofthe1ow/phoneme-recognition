@@ -1,20 +1,17 @@
 from safetensors.torch import load_file
 
-from src.engines.kotone import KoToNe
-from src.engines.kotone_combined import KoToNeCombined
-from src.engines.kotone_ctc import KoToNeCTC
-from src.engines.kotone_m import KoToNeMAdapter
+from src.engines.raripa import RARIPA
+from src.engines.raripa_combined import RARIPACombined
+from src.engines.raripa_ctc import RARIPACTC
 
 
 def build_model(checkpoint_path=None, mode="ce-only"):
     if mode == "ctc-only":
-        model = KoToNeCTC()
+        model = RARIPACTC()
     elif mode == "combined":
-        model = KoToNeCombined()
-    elif mode == "m-adapter":
-        model = KoToNeMAdapter()
+        model = RARIPACombined()
     else:
-        model = KoToNe()
+        model = RARIPA()
 
     if checkpoint_path is not None:
         state_dict = load_file(checkpoint_path + "/model.safetensors")

@@ -38,7 +38,7 @@ cmd = [
     "run",
     "python3",
     "-m",
-    "src.scripts.kotone_eval",
+    "src.scripts.raripa_eval",
     "--checkpoint-path",
     selected_checkpoint,
     "--test-manifest-path",
