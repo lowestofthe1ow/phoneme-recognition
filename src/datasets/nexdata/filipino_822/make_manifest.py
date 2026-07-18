@@ -25,7 +25,7 @@ from transformers import AutoTokenizer, T5ForConditionalGeneration
 from src.utils.file_read import get_wav_duration, read_file
 from src.utils.train_test_val_split import train_test_val_split
 
-CHECKPOINT = "models/g2p/checkpoint-9670"
+CHECKPOINT = "models/g2p/checkpoint-14500"
 BATCH_SIZE = 16
 device = "cuda" if torch.cuda.is_available() else "cpu"
 tokenizer = AutoTokenizer.from_pretrained(CHECKPOINT)

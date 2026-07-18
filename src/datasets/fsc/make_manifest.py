@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 from transformers import AutoTokenizer, T5ForConditionalGeneration
 
-CHECKPOINT = "models/g2p/checkpoint-9670"
+CHECKPOINT = "models/g2p/checkpoint-14500"
 BATCH_SIZE = 32
 device = "cuda" if torch.cuda.is_available() else "cpu"
 tokenizer = AutoTokenizer.from_pretrained(CHECKPOINT)

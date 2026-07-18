@@ -29,7 +29,7 @@ parser.add_argument("--train-manifest-path", default=TRAIN_MANIFEST)
 parser.add_argument("--valid-manifest-path", default=VALID_MANIFEST)
 parser.add_argument("--test-manifest-path", default=TEST_MANIFEST)
 parser.add_argument("--ctc-checkpoint-path", default=None)
-parser.add_argument("--mode", choices=["ce-only", "ctc-only", "combined"])
+parser.add_argument("--mode", choices=["ce-only", "ctc-only", "combined", "m-adapter"])
 args = parser.parse_args()
 
 tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_ID)

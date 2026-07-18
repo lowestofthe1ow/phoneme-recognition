@@ -24,7 +24,9 @@ class KoToNeCTC(KoToNe):
         **kwargs,
     ):
         # Grab the projected inputs to ByT5 as well as the downsampled mask
-        projected, mask, projected_lengths, _ = self._get_projected(
+        # TODO: Is this even necessary? Not even sure now what "skipping ByT5"
+        # should look like, lol.
+        projected, mask, projected_lengths, _, feat_lengths = self._get_projected(
             audio_values, attention_mask
         )
 
