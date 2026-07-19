@@ -4,7 +4,7 @@ import pandas as pd
 import panphon
 import panphon.distance
 
-ACTUAL = "ʔaŋ 'd͡ʒunjoɾ 'haj 'skul"
+ACTUAL = "na'tapon ʔaŋ t͡ʃa'ʔa sa 'd͡ʒaket"
 INPUT = "ʔaŋ d͡ʒun'joɾ 'haj 'skul"
 
 
@@ -99,7 +99,12 @@ class Metrics:
         }
 
         if verbose:
-            print(metrics)  # TODO: Prettify
+            print("-" * 40)
+            print(f"Target: {metrics['target']}")
+            print(f"Predict: {metrics['predicted']}")
+            print(f"PER: {metrics['per']}")
+            print(f"PFER: {metrics['pfer']}")
+            print(f"SPER: {metrics['sper']}")
 
         if sentence is not None:
             metrics["sentence"] = sentence
@@ -119,3 +124,8 @@ class Metrics:
 
     def get_output_df(self):
         return pd.DataFrame(self.output)
+
+
+metrics = Metrics()
+print(metrics.pft.ipa_segs(ACTUAL))
+print(metrics.sft.ipa_segs(ACTUAL))

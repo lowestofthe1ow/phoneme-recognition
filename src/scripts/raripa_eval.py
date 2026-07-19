@@ -22,6 +22,7 @@ BATCH_SIZE = 8
 parser = argparse.ArgumentParser()
 parser.add_argument("--checkpoint-path", default=TEST_MANIFEST)
 parser.add_argument("--test-manifest-path", default=TEST_MANIFEST)
+parser.add_argument("--mode", choices=["ce-only", "ctc-only", "combined", "m-adapter"])
 args = parser.parse_args()
 
 os.makedirs("results", exist_ok=True)
@@ -29,7 +30,7 @@ os.makedirs("results", exist_ok=True)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_ID)
 
-model = build_model(mode="ce-only")
+model = build_model(mode=args.mode)
 model.load_state_dict(
     load_file(f"{args.checkpoint_path}/model.safetensors"), strict=False
 )

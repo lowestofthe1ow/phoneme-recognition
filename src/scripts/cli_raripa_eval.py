@@ -32,6 +32,15 @@ if not selected_dataset:
     print("Cancelled by user.")
     sys.exit(0)
 
+# Prompt user to select a mode
+selected_mode = questionary.select(
+    "Choose a mode:", choices=["ce-only", "ctc-only", "combined"], use_indicator=True
+).ask()
+
+if not selected_dataset:
+    print("Cancelled by user.")
+    sys.exit(0)
+
 # NOTE: We run the Python script with uv!
 cmd = [
     "uv",
@@ -43,6 +52,8 @@ cmd = [
     selected_checkpoint,
     "--test-manifest-path",
     selected_dataset,
+    "--mode",
+    selected_mode,
 ]
 
 print(f"\nRunning command: {' '.join(cmd)}\n")
